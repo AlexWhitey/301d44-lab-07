@@ -1,75 +1,95 @@
 'use strict';
 
+//Application Dependencies
+const express = require('express');
+const cors = require('cors');
+const superagent = require('superagent');
+
+//Load enviroment variables from .env file
 require('dotenv').config();
 
-const express = require('express');
-
-const PORT = process.env.PORT || 3000;
+// Aplication setup
 const app = express();
-const cors = require('cors');
-
+const PORT = process.env.PORT || 3000;
 app.use(cors());
 
 
 //route to location
 app.get('/location', (request, response) => {
-  const locationData = searchToLatLong(request.query.data);
-  response.send(locationData);
+  searchToLatLong(request.query.data)
+    .then(location => response.send(location))
+    .catch(error => handleError(error, response));
 });
 
 //route to weather
-app.get('/weather', (request, response) => {
-  const weatherData = getWeather(request.query.data);
-  response.send(weatherData);
-});
+app.get('/weather', getWeather);
 
 // Route to meetup
-// app.get('/meetUp', (request, response) => {
-//   const meetUpData = getMeetUp(request.query.data);
-//   response.send(meetUpData);
-// });
+app.get('/meetUp', (request, response) => {
+  getMeetUp(request.query.data)
+    .then(meetUp => response.send(meetUp))
+    .catch(error => handleError(error, response));
+});
+
+// app.get('/meetUp', getMeetUp);
+
+//***************** */
+// Helper Functions
+//***************** */
 
 //Errror handler
 function handleError(err, res){
-  console.error(err);
-  if (res) res.status(500).send('Piss Off');
+  if (res) res.status(500).send('Sorry, there was an error');
 }
 
-//search lat long funciton
+// Location route handler
 function searchToLatLong(query){
-  const geoData = require('./data/geo.json');
-  const location = new Location(query, geoData);
-  console.log('Location in searchToLatLong()', location);
-  return location;
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${process.env.GOOGLE_API}`;
+  return superagent.get(url)
+    .then(res => {
+      return new Location(query, res);
+    })
+    .catch(error => handleError(error));
 }
 
-//search to weatherdata
-// function getWeather(){
-//   const darkSkyData = require('./data/darksky.json');
-//   let weatherSummaries = [];
-//   darkSkyData.daily.data.forEach(day=>{
-//     weatherSummaries.push(new Weather(day));
-//   });
-//   return weatherSummaries
-// }
+// Weather route handler
+function getWeather(request, response){
+  const url = `https://api.darksky.net/forecast/${process.env.DARKSKY_API}/${request.query.data.latitude},${request.query.data.longitude}`;
 
-function getWeather(){
-  const darkSkyData = require('./data/darksky.json');
-  let weatherSummaries = [];
-  darkSkyData.daily.data.map(function(day) {
-    weatherSummaries.push(new Weather(day));
-  });
-  return weatherSummaries;
+  superagent.get(url)
+    .then(result => {
+      const weatherSummaries = result.body.daily.data.map(day => {
+        return new Weather(day);
+      });
+      response.send(weatherSummaries);
+    })
+    .catch(error => handleError(error, response));
 }
 
+//MeetUp route handler
+function getMeetUp(request, response){
+  const url = `https://api.meetup.com/find/events?lon=${request.query.data.longitude}&lat=${request.query.data.latitude}&key=${process.env.MEETUP_API}`;
+
+  return superagent.get(url)
+    .then(result => {
+      const meetUpSummaries = result.body.data.map(obj => {
+        return new MeetUp(obj);
+      });
+      response.send(meetUpSummaries);
+    })
+    .catch(error => handleError(error));
+}
+
+//**************** */
+// Constructors
+//**************** */
 
 //location constructor
 function Location(query, res) {
-  console.log('res in Location()', res);
   this.search_query = query;
-  this.formatted_query = res.results[0].formatted_address;
-  this.latitude = res.results[0].geometry.location.lat;
-  this.longitude = res.results[0].geometry.location.lng;
+  this.formatted_query = res.body.results[0].formatted_address;
+  this.latitude = res.body.results[0].geometry.location.lat;
+  this.longitude = res.body.results[0].geometry.location.lng;
 }
 
 //forecast constructor
@@ -79,15 +99,14 @@ function Weather(day){
 }
 
 //meetup constructor
-// function MeetUp(query, res) {
-//   this.search_query = query;
-//   this.link = res.body.results[0].link;
-//   this.name = res.body.results[0].name;
-//   this.creation_date = res.body.results[0].creation_date;
-//   this.host = res.body.results[0].host;
-// }
+function MeetUp(res) {
+  // this.search_query = query;
+  this.link = res.body.link;
+  this.name = res.body.name;
+  this.creation_date = res.body.created;
+  this.host = res.body.group.name;
+}
 
 app.use('*', (err, res) => handleError(err, res));
-// app.use('*', (request, response) => response.send(`Sorry, that route does not exist`));
 
 app.listen(PORT, () => console.log(`App is up on ${PORT}`));
