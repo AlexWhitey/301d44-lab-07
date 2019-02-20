@@ -7,6 +7,7 @@ const express = require('express');
 const PORT = process.env.PORT || 3000;
 const app = express();
 const cors = require('cors');
+
 app.use(cors());
 
 
@@ -21,6 +22,12 @@ app.get('/weather', (request, response) => {
   const weatherData = getWeather(request.query.data);
   response.send(weatherData);
 });
+
+// Route to meetup
+// app.get('/meetUp', (request, response) => {
+//   const meetUpData = getMeetUp(request.query.data);
+//   response.send(meetUpData);
+// });
 
 //Errror handler
 function handleError(err, res){
@@ -37,14 +44,24 @@ function searchToLatLong(query){
 }
 
 //search to weatherdata
+// function getWeather(){
+//   const darkSkyData = require('./data/darksky.json');
+//   let weatherSummaries = [];
+//   darkSkyData.daily.data.forEach(day=>{
+//     weatherSummaries.push(new Weather(day));
+//   });
+//   return weatherSummaries
+// }
+
 function getWeather(){
   const darkSkyData = require('./data/darksky.json');
   let weatherSummaries = [];
-  darkSkyData.daily.data.forEach(day=>{
+  darkSkyData.daily.data.map(function(day) {
     weatherSummaries.push(new Weather(day));
   });
-  return weatherSummaries
+  return weatherSummaries;
 }
+
 
 //location constructor
 function Location(query, res) {
@@ -60,6 +77,15 @@ function Weather(day){
   this.forecast = day.summary;
   this.time = new Date(day.time*1000).toString().slice(0,15);
 }
+
+//meetup constructor
+// function MeetUp(query, res) {
+//   this.search_query = query;
+//   this.link = res.body.results[0].link;
+//   this.name = res.body.results[0].name;
+//   this.creation_date = res.body.results[0].creation_date;
+//   this.host = res.body.results[0].host;
+// }
 
 app.use('*', (err, res) => handleError(err, res));
 // app.use('*', (request, response) => response.send(`Sorry, that route does not exist`));
