@@ -41,9 +41,9 @@ Estimate of time needed to complete: 3 hours
 
 Start time: 0940
 
-Finish time: 
+Finish time: 1340
 
-Actual time needed to complete: 
+Actual time needed to complete: 3 hr 3 min (with breaks)
 
 # City Explorer
 

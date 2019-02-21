@@ -4,6 +4,7 @@
 const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent');
+const pg = require('pg');
 
 //Load enviroment variables from .env file
 require('dotenv').config();
@@ -12,7 +13,9 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.use(cors());
-
+const client = new pg.Client(process.env.Databse_URL) 
+client.connect();
+client.on('error', err => console.error(err));
 
 //route to location
 app.get('/location', (request, response) => {
@@ -25,13 +28,8 @@ app.get('/location', (request, response) => {
 app.get('/weather', getWeather);
 
 // Route to meetup
-app.get('/meetUp', (request, response) => {
-  getMeetUp(request.query.data)
-    .then(meetUp => response.send(meetUp))
-    .catch(error => handleError(error, response));
-});
+app.get('/meetups', getMeetUp);
 
-// app.get('/meetUp', getMeetUp);
 
 //***************** */
 // Helper Functions
@@ -68,12 +66,13 @@ function getWeather(request, response){
 
 //MeetUp route handler
 function getMeetUp(request, response){
-  const url = `https://api.meetup.com/find/events?lon=${request.query.data.longitude}&lat=${request.query.data.latitude}&key=${process.env.MEETUP_API}`;
-
+  const url = `https://api.meetup.com/find/upcoming_events?&sign=true&photo-host=public&lon=${request.query.data.longitude}&page=20&lat=${request.query.data.latitude}&key=${process.env.MEETUP_API}`
   return superagent.get(url)
     .then(result => {
-      const meetUpSummaries = result.body.data.map(obj => {
-        return new MeetUp(obj);
+      const meetUpSummaries = result.body.events.map(meetup => {
+        const event = new MeetUp(meetup)
+        console.log(event);
+        return event;
       });
       response.send(meetUpSummaries);
     })
@@ -99,12 +98,12 @@ function Weather(day){
 }
 
 //meetup constructor
-function MeetUp(res) {
-  // this.search_query = query;
-  this.link = res.body.link;
-  this.name = res.body.name;
-  this.creation_date = res.body.created;
-  this.host = res.body.group.name;
+function MeetUp(meetup) {
+  this.link = meetup.link;
+  this.name = meetup.name;
+  this.creation_date = new Date(meetup.group.created).toString().slice(0, 15);
+  this.host = meetup.group.name;
+  this.created_at = Date.now();
 }
 
 app.use('*', (err, res) => handleError(err, res));
