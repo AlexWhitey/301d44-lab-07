@@ -42,7 +42,7 @@ function handleError(err, res){
 
 // Location route handler
 function searchToLatLong(query){
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${process.env.GOOGLE_API}`;
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${process.env.GEOCODE_API_KEY}`;
   return superagent.get(url)
     .then(res => {
       return new Location(query, res);
@@ -52,7 +52,7 @@ function searchToLatLong(query){
 
 // Weather route handler
 function getWeather(request, response){
-  const url = `https://api.darksky.net/forecast/${process.env.DARKSKY_API}/${request.query.data.latitude},${request.query.data.longitude}`;
+  const url = `https://api.darksky.net/forecast/${process.env.DARKSKY_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
 
   superagent.get(url)
     .then(result => {
@@ -66,12 +66,11 @@ function getWeather(request, response){
 
 //MeetUp route handler
 function getMeetUp(request, response){
-  const url = `https://api.meetup.com/find/upcoming_events?&sign=true&photo-host=public&lon=${request.query.data.longitude}&page=20&lat=${request.query.data.latitude}&key=${process.env.MEETUP_API}`
+  const url = `https://api.meetup.com/find/upcoming_events?&sign=true&photo-host=public&lon=${request.query.data.longitude}&page=20&lat=${request.query.data.latitude}&key=${process.env.MEETUP_API_KEY}`
   return superagent.get(url)
     .then(result => {
       const meetUpSummaries = result.body.events.map(meetup => {
         const event = new MeetUp(meetup)
-        console.log(event);
         return event;
       });
       response.send(meetUpSummaries);
@@ -100,10 +99,9 @@ function Weather(day){
 //meetup constructor
 function MeetUp(meetup) {
   this.link = meetup.link;
-  this.name = meetup.name;
+  this.name = meetup.group.name;
   this.creation_date = new Date(meetup.group.created).toString().slice(0, 15);
-  this.host = meetup.group.name;
-  this.created_at = Date.now();
+  this.host = meetup.group.who;
 }
 
 app.use('*', (err, res) => handleError(err, res));
